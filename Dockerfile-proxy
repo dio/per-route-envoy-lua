@@ -1,0 +1,2 @@
+FROM dio123/envoy-lua:latest
+CMD /usr/local/bin/envoy -c /etc/envoy.yaml -l info --service-cluster proxy

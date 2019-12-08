@@ -1,0 +1,76 @@
+static_resources:
+  listeners:
+  - name: main
+    address:
+      socket_address:
+        address: 0.0.0.0
+        port_value: 80
+    filter_chains:
+    - filters:
+      - name: envoy.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.config.filter.network.http_connection_manager.v2.HttpConnectionManager
+          stat_prefix: ingress_http
+          codec_type: auto
+          route_config:
+            name: local_route
+            virtual_hosts:
+            - name: local_service
+              domains:
+              - "*"
+              routes:
+              - match:
+                  prefix: "/hello"
+                route:
+                  cluster: web_service
+                per_filter_config:
+                  envoy.lua:
+                    name: hello
+              - match:
+                  prefix: "/"
+                route:
+                  cluster: web_service
+          http_filters:
+          - name: envoy.lua
+            typed_config:
+              "@type": type.googleapis.com/envoy.config.filter.http.lua.v2.Lua
+              inline_code: |
+                function envoy_on_request(request_handle)
+                  request_handle:logInfo("foo")
+                end
+                function envoy_on_response(response_handle)
+                  response_handle:logInfo("bar")
+                  response_handle:headers():add("ok", "1")
+                end
+              inline_codes:
+                hello: |
+                  function envoy_on_request(request_handle)
+                    request_handle:logInfo("hello:foo")
+                  end
+                  function envoy_on_response(response_handle)
+                    response_handle:logInfo("hello:bar")
+                    response_handle:headers():add("hello:ok", "1")
+                  end
+          - name: envoy.router
+            typed_config: {}
+
+  clusters:
+  - name: web_service
+    connect_timeout: 0.25s
+    type: strict_dns # static
+    lb_policy: round_robin
+    load_assignment:
+      cluster_name: web_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: web_service
+                port_value: 80
+admin:
+  access_log_path: "/dev/null"
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 8001
