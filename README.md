@@ -3,6 +3,8 @@
 TL;DR
 
 ```
+$ # make sure we rebuild the images after touching envoy.yaml
+$ docker-compose build
 $ docker-compose up -d
 $ curl -I localhost:8000
 HTTP/1.1 200 OK
@@ -38,22 +40,23 @@ The config is as follows:
                   cluster: web_service
                 per_filter_config:
                   envoy.lua:
-                    name: hello
+                    name: hello.lua
 ```
 
 The `name` is a reference to the one of the keys under `inline_codes:` in `envoy.lua` config entry.
 In this case, `inline_codes` has a `hello` key.
 
 ```yaml
-              inline_codes:
-                hello: |
-                  function envoy_on_request(request_handle)
-                    request_handle:logInfo("hello:foo")
-                  end
-                  function envoy_on_response(response_handle)
-                    response_handle:logInfo("hello:bar")
-                    response_handle:headers():add("hello:ok", "1")
-                  end
+              source_codes:
+                hello.lua:
+                  inline_string: |
+                    function envoy_on_request(request_handle)
+                      request_handle:logInfo("hello:foo")
+                    end
+                    function envoy_on_response(response_handle)
+                      response_handle:logInfo("hello:bar")
+                      response_handle:headers():add("hello:ok", "1")
+                    end
 ```
 
 The files here are modified version of `examples/lua` in envoy repo.
